@@ -18,6 +18,8 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 
 builder.Services.AddCorsSettings(builder.Configuration);
 
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

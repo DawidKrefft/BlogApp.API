@@ -1,6 +1,6 @@
-﻿using BlogApp.API.Models.Domain;
+﻿using AutoMapper;
+using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
-using BlogApp.API.Models.Extensions;
 using BlogApp.API.Repositories.Interface;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,26 +11,26 @@ namespace BlogApp.API.Controllers
     public class ImagesController : ControllerBase
     {
         private readonly IImageRepository imageRepository;
+        private readonly IMapper mapper;
         private readonly IConfiguration configuration;
 
-        public ImagesController(IImageRepository imageRepository, IConfiguration configuration)
+        public ImagesController(
+            IImageRepository imageRepository,
+            IMapper mapper,
+            IConfiguration configuration
+        )
         {
             this.imageRepository = imageRepository;
+            this.mapper = mapper;
             this.configuration = configuration;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAllImages()
         {
-            // Call image repository to get all images
             var images = await imageRepository.GetAll();
 
-            // Convert Domain models to DTOs
-            var response = new List<BlogImageDto>();
-            foreach (var image in images)
-            {
-                response.Add(image.ToDto());
-            }
+            var response = mapper.Map<List<BlogImageDto>>(images);
             return Ok(response);
         }
 
@@ -56,8 +56,7 @@ namespace BlogApp.API.Controllers
 
                 blogImage = await imageRepository.Upload(file, blogImage);
 
-                // Convert Domain Model to DTO using the extension method
-                var response = blogImage.ToDto();
+                var response = mapper.Map<BlogImageDto>(blogImage);
 
                 return Ok(response);
             }
@@ -68,7 +67,6 @@ namespace BlogApp.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteImage(Guid id)
         {
-            // Delete the image using the image repository
             var deletedImage = await imageRepository.DeleteAsync(id);
 
             if (deletedImage == null)
@@ -81,7 +79,6 @@ namespace BlogApp.API.Controllers
 
         private void ValidateFileUpload(IFormFile file)
         {
-            // later take from appsettings.json
             var allowedExtensions = configuration
                 .GetSection("AppSettings:AllowedExtensions")
                 .Get<string[]>();

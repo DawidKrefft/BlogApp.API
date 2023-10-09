@@ -1,9 +1,8 @@
-﻿using BlogApp.API.Models.Domain;
+﻿using AutoMapper;
+using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
-using BlogApp.API.Models.Extensions;
 using BlogApp.API.Repositories.Interface;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlogApp.API.Controllers
@@ -14,26 +13,28 @@ namespace BlogApp.API.Controllers
     {
         private readonly IBlogPostRepository blogPostRepository;
         private readonly ICategoryRepository categoryRepository;
+        private readonly IMapper mapper;
 
         public BlogPostsController(
             IBlogPostRepository blogPostRepository,
-            ICategoryRepository categoryRepository
+            ICategoryRepository categoryRepository,
+            IMapper mapper
         )
         {
             this.blogPostRepository = blogPostRepository;
             this.categoryRepository = categoryRepository;
+            this.mapper = mapper;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAllBlogPost()
         {
             var blogPosts = await blogPostRepository.GetAllAsync();
-            var response = blogPosts.Select(blogPost => blogPost.ToDto()).ToList();
+            var response = mapper.Map<List<BlogPostDto>>(blogPosts);
             return Ok(response);
         }
 
-        [HttpGet]
-        [Route("{id:Guid}")]
+        [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetBlogPostById([FromRoute] Guid id)
         {
             var blogPost = await blogPostRepository.GetByIdAsync(id);
@@ -43,12 +44,11 @@ namespace BlogApp.API.Controllers
                 return NotFound();
             }
 
-            var response = blogPost.ToDto();
+            var response = mapper.Map<BlogPostDto>(blogPost);
             return Ok(response);
         }
 
-        [HttpGet]
-        [Route("{urlHandle}")]
+        [HttpGet("{urlHandle}")]
         public async Task<IActionResult> GetBlogPostByUrlHandle([FromRoute] string urlHandle)
         {
             var blogPost = await blogPostRepository.GetByUrlHandleAsync(urlHandle);
@@ -58,20 +58,20 @@ namespace BlogApp.API.Controllers
                 return NotFound();
             }
 
-            var response = blogPost.ToDto();
+            var response = mapper.Map<BlogPostDto>(blogPost);
             return Ok(response);
         }
 
         [HttpPost]
         [Authorize(Roles = "Writer")]
-        public async Task<IActionResult> CreateBlogPost(CreateBlogPostRequestDto request)
+        public async Task<IActionResult> CreateBlogPost([FromBody] CreateBlogPostRequestDto request)
         {
-            var blogPost = request.ToDomainModel();
+            var blogPost = mapper.Map<BlogPost>(request);
 
             foreach (var categoryGuid in request.Categories)
             {
                 var existingCategory = await categoryRepository.GetByIdAsync(categoryGuid);
-                if (existingCategory != null)
+                if (existingCategory is not null)
                 {
                     blogPost.Categories.Add(existingCategory);
                 }
@@ -79,20 +79,19 @@ namespace BlogApp.API.Controllers
 
             blogPost = await blogPostRepository.CreateAsync(blogPost);
 
-            var response = blogPost.ToDto();
+            var response = mapper.Map<BlogPostDto>(blogPost);
 
             return Ok(response);
         }
 
-        [HttpPut]
-        [Route("{id:Guid}")]
+        [HttpPut("{id:Guid}")]
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> UpdateBlogPostById(
             [FromRoute] Guid id,
             UpdateBlogPostRequestDto request
         )
         {
-            var blogPost = request.ToDomainModel();
+            var blogPost = mapper.Map<BlogPost>(request);
             blogPost.Id = id;
 
             foreach (var categoryGuid in request.Categories)
@@ -112,12 +111,11 @@ namespace BlogApp.API.Controllers
                 return NotFound();
             }
 
-            var response = updatedBlogPost.ToDto();
+            var response = mapper.Map<BlogPostDto>(updatedBlogPost);
             return Ok(response);
         }
 
-        [HttpDelete]
-        [Route("{id:Guid}")]
+        [HttpDelete("{id:Guid}")]
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> DeleteBlogPost([FromRoute] Guid id)
         {

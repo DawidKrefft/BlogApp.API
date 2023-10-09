@@ -1,35 +1,23 @@
-﻿using BlogApp.API.Data;
-using BlogApp.API.Models.Domain;
+﻿using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories.Interface;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using BlogApp.API.Models.Extensions;
+using AutoMapper;
 
 namespace BlogApp.API.Controllers
 {
-    //https://localhost:7055/api/categories
     [Route("api/[controller]")]
     [ApiController]
     public class CategoriesController : ControllerBase
     {
         private readonly ICategoryRepository categoryRepository;
+        private readonly IMapper mapper;
 
-        public CategoriesController(ICategoryRepository categoryRepository)
+        public CategoriesController(ICategoryRepository categoryRepository, IMapper mapper)
         {
             this.categoryRepository = categoryRepository;
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "Writer")]
-        public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequestDto request)
-        {
-            var category = request.ToDomainModel();
-            await categoryRepository.CreateAsync(category);
-
-            var response = category.ToDto();
-            return Ok(response);
+            this.mapper = mapper;
         }
 
         [HttpGet]
@@ -37,12 +25,11 @@ namespace BlogApp.API.Controllers
         {
             var categories = await categoryRepository.GetAllAsync();
 
-            var response = categories.Select(category => category.ToDto()).ToList();
+            var response = mapper.Map<List<CategoryDto>>(categories);
             return Ok(response);
         }
 
-        [HttpGet]
-        [Route("{id:Guid}")]
+        [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetCategoryById([FromRoute] Guid id)
         {
             var existingCategory = await categoryRepository.GetByIdAsync(id);
@@ -52,14 +39,22 @@ namespace BlogApp.API.Controllers
                 return NotFound();
             }
 
-            // Use the ToDto extension method to convert the domain model to a DTO
-            var response = existingCategory.ToDto();
-
+            var response = mapper.Map<CategoryDto>(existingCategory);
             return Ok(response);
         }
 
-        [HttpPut]
-        [Route("{id:guid}")]
+        [HttpPost]
+        [Authorize(Roles = "Writer")]
+        public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequestDto request)
+        {
+            var category = mapper.Map<Category>(request);
+            await categoryRepository.CreateAsync(category);
+
+            var response = mapper.Map<CategoryDto>(category);
+            return Ok(response);
+        }
+
+        [HttpPut("{id:Guid}")]
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> EditCategory(
             [FromRoute] Guid id,
@@ -72,18 +67,15 @@ namespace BlogApp.API.Controllers
                 return NotFound();
             }
 
-            // Use the ToDomainModel extension method for UpdateCategoryRequestDto
-            var updatedCategory = request.ToDomainModel();
-            updatedCategory.Id = id;
+            mapper.Map(request, existingCategory);
 
-            updatedCategory = await categoryRepository.UpdateAsync(updatedCategory);
+            var updatedCategory = await categoryRepository.UpdateAsync(existingCategory);
 
-            var response = updatedCategory.ToDto();
+            var response = mapper.Map<CategoryDto>(updatedCategory);
             return Ok(response);
         }
 
-        [HttpDelete]
-        [Route("{id:Guid}")]
+        [HttpDelete("{id:Guid}")]
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> DeleteCategory([FromRoute] Guid id)
         {

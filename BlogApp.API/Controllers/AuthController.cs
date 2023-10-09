@@ -1,4 +1,5 @@
-﻿using BlogApp.API.Models.DTO;
+﻿using AutoMapper;
+using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -11,19 +12,20 @@ namespace BlogApp.API.Controllers
     {
         private readonly UserManager<IdentityUser> userManager;
         private readonly ITokenRepository tokenRepository;
+        private readonly IMapper mapper;
 
         public AuthController(
             UserManager<IdentityUser> userManager,
-            ITokenRepository tokenRepository
+            ITokenRepository tokenRepository,
+            IMapper mapper
         )
         {
             this.userManager = userManager;
             this.tokenRepository = tokenRepository;
+            this.mapper = mapper;
         }
 
-        // POST: {apiBaseUrl}/api/auth/login
-        [HttpPost]
-        [Route("login")]
+        [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             var identityUser = await userManager.FindByEmailAsync(request.Email);
@@ -35,12 +37,9 @@ namespace BlogApp.API.Controllers
                     var roles = await userManager.GetRolesAsync(identityUser);
                     var jwtToken = tokenRepository.CreateJwtToken(identityUser, roles.ToList());
 
-                    var response = new LoginResponseDto()
-                    {
-                        Email = request.Email,
-                        Roles = roles.ToList(),
-                        Token = jwtToken
-                    };
+                    var response = mapper.Map<LoginResponseDto>(identityUser);
+                    response.Roles = roles.ToList();
+                    response.Token = jwtToken;
 
                     return Ok(response);
                 }
@@ -50,16 +49,11 @@ namespace BlogApp.API.Controllers
             return ValidationProblem(ModelState);
         }
 
-        // POST: {apiBaseUrl}/api/auth/register
-        [HttpPost]
-        [Route("register")]
+        [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
-            var user = new IdentityUser
-            {
-                UserName = request.Email?.Trim(),
-                Email = request.Email?.Trim()
-            };
+            var user = mapper.Map<IdentityUser>(request);
+            user.UserName = user.Email?.Trim(); // Set UserName from Email
 
             var identityResult = await userManager.CreateAsync(user, request.Password);
 
