@@ -1,17 +1,17 @@
-﻿using BlogApp.API.Repositories.Interface;
+﻿using BlogApp.API.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace BlogApp.API.Repositories.Implementation
+namespace BlogApp.API.Services
 {
-    public class TokenRepository : ITokenRepository
+    public class TokenService : ITokenRepository
     {
         private readonly IConfiguration configuration;
 
-        public TokenRepository(IConfiguration configuration)
+        public TokenService(IConfiguration configuration)
         {
             this.configuration = configuration;
         }
@@ -38,7 +38,6 @@ namespace BlogApp.API.Repositories.Implementation
                 signingCredentials: credentials
             );
 
-            // Return Token
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }

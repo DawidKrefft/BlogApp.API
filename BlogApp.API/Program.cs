@@ -1,24 +1,30 @@
-using BlogApp.API.Authorization;
-using BlogApp.API.Cors;
-using BlogApp.API.Data;
+using BlogApp.API.Extensions;
 using BlogApp.API.Images.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRepositories(builder.Configuration);
+// Service Configuration
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+// Database Configuration
+builder.Services.AddDbContexts(builder.Configuration);
+
+// Repository Configuration
+builder.Services.AddRepositories();
+
+// Security and Identity Configuration
+builder.Services.AddBlogAppIdentity();
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.ConfigureIdentityOptions();
+
+// API Documentation and Swagger Configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddBlogAppIdentity();
-builder.Services.ConfigureIdentityOptions();
-
-builder.Services.AddJwtAuthentication(builder.Configuration);
-
+// CORS Configuration
 builder.Services.AddCorsSettings(builder.Configuration);
-
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
@@ -28,6 +34,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Middleware Configuration
 app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthorization();
