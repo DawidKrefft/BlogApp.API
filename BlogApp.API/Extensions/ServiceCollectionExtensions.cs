@@ -34,7 +34,7 @@ namespace BlogApp.API.Extensions
             services.AddScoped<ICategoryRepository, CategoryService>();
             services.AddScoped<IBlogPostRepository, BlogPostService>();
             services.AddScoped<IImageRepository, ImageService>();
-            services.AddScoped<ITokenRepository, TokenService>();
+            services.AddTransient<IAuthRepository, AuthService>();
 
             return services;
         }

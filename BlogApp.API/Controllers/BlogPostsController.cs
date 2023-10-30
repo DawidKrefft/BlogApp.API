@@ -1,8 +1,5 @@
-﻿using AutoMapper;
-using BlogApp.API.Models.Domain;
-using BlogApp.API.Models.DTO;
+﻿using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories;
-using BlogApp.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,25 +10,20 @@ namespace BlogApp.API.Controllers
     public class BlogPostsController : ControllerBase
     {
         private readonly IBlogPostRepository blogPostRepository;
-        private readonly ICategoryRepository categoryRepository;
-        private readonly IMapper mapper;
 
-        public BlogPostsController(
-            IBlogPostRepository blogPostRepository,
-            ICategoryRepository categoryRepository,
-            IMapper mapper
-        )
+        public BlogPostsController(IBlogPostRepository blogPostRepository)
         {
             this.blogPostRepository = blogPostRepository;
-            this.categoryRepository = categoryRepository;
-            this.mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllBlogPost()
+        public async Task<IActionResult> GetAllBlogPost(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 5
+        )
         {
-            var blogPosts = await blogPostRepository.GetAllAsync();
-            return Ok(blogPosts);
+            var paginatedResult = await blogPostRepository.GetAllAsync(page, pageSize);
+            return Ok(paginatedResult);
         }
 
         [HttpGet("{id:Guid}")]

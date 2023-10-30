@@ -1,5 +1,7 @@
 using BlogApp.API.Extensions;
 using BlogApp.API.Images.Extensions;
+using BlogApp.API.Middlewares;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddTransient<GlobalExceptionHandlingMiddleware>();
+
+// Validators
+builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
 
 // Database Configuration
 builder.Services.AddDbContexts(builder.Configuration);
@@ -38,6 +44,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthorization();
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseBlogAppStaticFiles();
 app.MapControllers();
 

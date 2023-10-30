@@ -22,21 +22,6 @@ namespace BlogApp.API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("BlogPostCategory", b =>
-                {
-                    b.Property<Guid>("BlogPostsId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CategoriesId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("BlogPostsId", "CategoriesId");
-
-                    b.HasIndex("CategoriesId");
-
-                    b.ToTable("BlogPostCategory");
-                });
-
             modelBuilder.Entity("BlogApp.API.Models.Domain.BlogImage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -64,7 +49,7 @@ namespace BlogApp.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BlogImages");
+                    b.ToTable("BlogImages", (string)null);
                 });
 
             modelBuilder.Entity("BlogApp.API.Models.Domain.BlogPost", b =>
@@ -105,7 +90,7 @@ namespace BlogApp.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BlogPosts");
+                    b.ToTable("BlogPosts", (string)null);
                 });
 
             modelBuilder.Entity("BlogApp.API.Models.Domain.Category", b =>
@@ -124,7 +109,22 @@ namespace BlogApp.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
+                });
+
+            modelBuilder.Entity("BlogPostCategory", b =>
+                {
+                    b.Property<Guid>("BlogPostsId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CategoriesId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("BlogPostsId", "CategoriesId");
+
+                    b.HasIndex("CategoriesId");
+
+                    b.ToTable("BlogPostCategory", (string)null);
                 });
 
             modelBuilder.Entity("BlogPostCategory", b =>

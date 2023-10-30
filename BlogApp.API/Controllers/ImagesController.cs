@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using BlogApp.API.Models.DTO;
+﻿using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,26 +10,20 @@ namespace BlogApp.API.Controllers
     public class ImagesController : ControllerBase
     {
         private readonly IImageRepository imageRepository;
-        private readonly IMapper mapper;
-        private readonly IConfiguration configuration;
 
-        public ImagesController(
-            IImageRepository imageRepository,
-            IMapper mapper,
-            IConfiguration configuration
-        )
+        public ImagesController(IImageRepository imageRepository)
         {
             this.imageRepository = imageRepository;
-            this.mapper = mapper;
-            this.configuration = configuration;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllImages()
+        public async Task<IActionResult> GetAllBlogPost(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 5
+        )
         {
-            var images = await imageRepository.GetAll();
-            var response = mapper.Map<List<BlogImageDto>>(images);
-            return Ok(response);
+            var paginatedResult = await imageRepository.GetAllAsync(page, pageSize);
+            return Ok(paginatedResult);
         }
 
         [HttpPost]

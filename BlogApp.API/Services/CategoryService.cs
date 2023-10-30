@@ -4,6 +4,7 @@ using BlogApp.API.Models.DTO;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using BlogApp.API.Repositories;
+using FluentValidation;
 
 namespace BlogApp.API.Services
 {
@@ -11,19 +12,50 @@ namespace BlogApp.API.Services
     {
         private readonly ApplicationDbContext dbContext;
         private readonly IMapper mapper;
+        private readonly IValidator<CreateCategoryRequestDto> createCategoryValidator;
+        private readonly IValidator<UpdateCategoryRequestDto> updateCategoryValidator;
 
-        public CategoryService(ApplicationDbContext dbContext, IMapper mapper)
+        public CategoryService(
+            ApplicationDbContext dbContext,
+            IMapper mapper,
+            IValidator<CreateCategoryRequestDto> createCategoryValidator,
+            IValidator<UpdateCategoryRequestDto> updateCategoryValidator
+        )
         {
             this.dbContext = dbContext;
             this.mapper = mapper;
+            this.createCategoryValidator = createCategoryValidator;
+            this.updateCategoryValidator = updateCategoryValidator;
         }
 
-        public async Task<IEnumerable<CategoryDto>> GetAllAsync()
+        public async Task<PaginatedResult<CategoryDto>> GetAllAsync(int page, int pageSize)
         {
             try
             {
-                var categories = await dbContext.Categories.ToListAsync();
-                return mapper.Map<List<CategoryDto>>(categories);
+                pageSize = Math.Min(pageSize, 50);
+
+                var query = dbContext.Categories.AsNoTracking();
+                var totalItems = await query.CountAsync();
+
+                var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+                var categories = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var categoriesDtos = mapper.Map<List<CategoryDto>>(categories);
+
+                var result = new PaginatedResult<CategoryDto>
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages,
+                    Items = categoriesDtos
+                };
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -53,7 +85,7 @@ namespace BlogApp.API.Services
             }
         }
 
-        public async Task<Category?> GetDomainModelByIdAsync(Guid id)
+        public async Task<Category> GetDomainModelByIdAsync(Guid id)
         {
             try
             {
@@ -70,6 +102,15 @@ namespace BlogApp.API.Services
 
         public async Task<CategoryDto> CreateAsync(CreateCategoryRequestDto request)
         {
+            var validation = await createCategoryValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+            {
+                var validationErrors = string.Join(
+                    ", ",
+                    validation.Errors.Select(error => error.ErrorMessage)
+                );
+                throw new ValidationException(validationErrors);
+            }
             try
             {
                 var category = mapper.Map<Category>(request);
@@ -86,6 +127,15 @@ namespace BlogApp.API.Services
 
         public async Task<CategoryDto> UpdateAsync(Guid id, UpdateCategoryRequestDto request)
         {
+            var validation = await updateCategoryValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+            {
+                var validationErrors = string.Join(
+                    ", ",
+                    validation.Errors.Select(error => error.ErrorMessage)
+                );
+                throw new ValidationException(validationErrors);
+            }
             try
             {
                 var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(

@@ -4,7 +4,7 @@ namespace BlogApp.API.Repositories
 {
     public interface IBlogPostRepository
     {
-        Task<IEnumerable<BlogPostDto>> GetAllAsync();
+        Task<PaginatedResult<BlogPostDto>> GetAllAsync(int page, int pageSize);
         Task<BlogPostDto> GetByIdAsync(Guid id);
         Task<BlogPostDto> GetByUrlHandleAsync(string urlHandle);
         Task<BlogPostDto> CreateAsync(CreateBlogPostRequestDto request);

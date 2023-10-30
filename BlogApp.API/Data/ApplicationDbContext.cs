@@ -1,5 +1,6 @@
 ﻿using BlogApp.API.Models.Domain;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 namespace BlogApp.API.Data
 {
@@ -11,5 +12,11 @@ namespace BlogApp.API.Data
         public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<BlogImage> BlogImages { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        }
     }
 }

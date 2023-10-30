@@ -17,10 +17,13 @@ namespace BlogApp.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllCategories()
+        public async Task<IActionResult> GetAllCategories(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 5
+        )
         {
-            var categories = await categoryRepository.GetAllAsync();
-            return Ok(categories);
+            var paginatedResult = await categoryRepository.GetAllAsync(page, pageSize);
+            return Ok(paginatedResult);
         }
 
         [HttpGet("{id:Guid}")]

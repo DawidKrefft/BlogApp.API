@@ -3,6 +3,7 @@ using BlogApp.API.Data;
 using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlogApp.API.Services
@@ -11,19 +12,50 @@ namespace BlogApp.API.Services
     {
         private readonly ApplicationDbContext dbContext;
         private readonly IMapper mapper;
+        private readonly IValidator<CreateBlogPostRequestDto> createBlogPostValidator;
+        private readonly IValidator<UpdateBlogPostRequestDto> updateBlogPostValidator;
 
-        public BlogPostService(ApplicationDbContext dbContext, IMapper mapper)
+        public BlogPostService(
+            ApplicationDbContext dbContext,
+            IMapper mapper,
+            IValidator<CreateBlogPostRequestDto> createBlogPostValidator,
+            IValidator<UpdateBlogPostRequestDto> updateBlogPostValidator
+        )
         {
             this.dbContext = dbContext;
             this.mapper = mapper;
+            this.createBlogPostValidator = createBlogPostValidator;
+            this.updateBlogPostValidator = updateBlogPostValidator;
         }
 
-        public async Task<IEnumerable<BlogPostDto>> GetAllAsync()
+        public async Task<PaginatedResult<BlogPostDto>> GetAllAsync(int page, int pageSize)
         {
             try
             {
-                var blogPosts = await dbContext.BlogPosts.Include(x => x.Categories).ToListAsync();
-                return mapper.Map<List<BlogPostDto>>(blogPosts);
+                pageSize = Math.Min(pageSize, 10);
+
+                var query = dbContext.BlogPosts.Include(x => x.Categories);
+                var totalItems = await query.CountAsync();
+
+                var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+                var blogPosts = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var blogPostDtos = mapper.Map<List<BlogPostDto>>(blogPosts);
+
+                var result = new PaginatedResult<BlogPostDto>
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages,
+                    Items = blogPostDtos
+                };
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -82,6 +114,15 @@ namespace BlogApp.API.Services
 
         public async Task<BlogPostDto> CreateAsync(CreateBlogPostRequestDto request)
         {
+            var validation = await createBlogPostValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+            {
+                var validationErrors = string.Join(
+                    ", ",
+                    validation.Errors.Select(error => error.ErrorMessage)
+                );
+                throw new ValidationException(validationErrors);
+            }
             try
             {
                 var blogPost = mapper.Map<BlogPost>(request);
@@ -111,6 +152,15 @@ namespace BlogApp.API.Services
 
         public async Task<BlogPostDto?> UpdateAsync(Guid id, UpdateBlogPostRequestDto request)
         {
+            var validation = await updateBlogPostValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+            {
+                var validationErrors = string.Join(
+                    ", ",
+                    validation.Errors.Select(error => error.ErrorMessage)
+                );
+                throw new ValidationException(validationErrors);
+            }
             try
             {
                 var existingBlogPost = await dbContext.BlogPosts

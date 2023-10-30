@@ -5,8 +5,8 @@ namespace BlogApp.API.Repositories
 {
     public interface IImageRepository
     {
+        Task<PaginatedResult<BlogImageDto>> GetAllAsync(int page, int pageSize);
         Task<BlogImageDto> Upload(ImageUploadRequestDto request);
-        Task<IEnumerable<BlogImageDto>> GetAll();
         Task<BlogImage> DeleteAsync(Guid id);
     }
 }
