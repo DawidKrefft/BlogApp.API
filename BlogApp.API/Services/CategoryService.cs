@@ -30,6 +30,11 @@ namespace BlogApp.API.Services
 
         public async Task<PaginatedResult<CategoryDto>> GetAllAsync(int page, int pageSize)
         {
+            if (page == 0 || pageSize == 0)
+            {
+                throw new InvalidOperationException("Page or PageSize cannot be 0");
+            }
+
             try
             {
                 pageSize = Math.Min(pageSize, 50);
@@ -142,20 +147,18 @@ namespace BlogApp.API.Services
                     c => c.Id == id
                 );
 
-                if (existingCategory != null)
-                {
-                    mapper.Map(request, existingCategory);
-                    await dbContext.SaveChangesAsync();
-                    return mapper.Map<CategoryDto>(existingCategory);
-                }
-                else
+                if (existingCategory == null)
                 {
                     throw new InvalidOperationException("Category not found.");
                 }
+
+                mapper.Map(request, existingCategory);
+                await dbContext.SaveChangesAsync();
+                return mapper.Map<CategoryDto>(existingCategory);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("Failed to update the category.", ex);
+                throw new InvalidOperationException(ex.Message);
             }
         }
 
@@ -167,20 +170,18 @@ namespace BlogApp.API.Services
                     c => c.Id == id
                 );
 
-                if (existingCategory != null)
-                {
-                    dbContext.Categories.Remove(existingCategory);
-                    await dbContext.SaveChangesAsync();
-                    return true;
-                }
-                else
+                if (existingCategory == null)
                 {
                     throw new InvalidOperationException("Category not found.");
                 }
+
+                dbContext.Categories.Remove(existingCategory);
+                await dbContext.SaveChangesAsync();
+                return true;
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("Failed to delete the category.", ex);
+                throw new InvalidOperationException(ex.Message);
             }
         }
     }

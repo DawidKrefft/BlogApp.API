@@ -27,7 +27,7 @@ namespace BlogApp.API.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             await authRepository.RegisterAsync(request);
-            return Ok("Account created successfully.");
+            return Ok(new { message = "Account created successfully." });
         }
 
         [Authorize(Roles = "Writer")]
