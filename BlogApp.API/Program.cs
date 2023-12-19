@@ -27,7 +27,7 @@ builder.Services.ConfigureIdentityOptions();
 
 // API Documentation and Swagger Configuration
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwagger();
 
 // CORS Configuration
 builder.Services.AddCorsSettings(builder.Configuration);
@@ -47,5 +47,8 @@ app.UseAuthorization();
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseBlogAppStaticFiles();
 app.MapControllers();
+
+// Initialize Database
+await app.Services.InitializeDBAsync();
 
 app.Run();

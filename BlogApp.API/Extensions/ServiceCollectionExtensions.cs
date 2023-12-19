@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
 
 namespace BlogApp.API.Extensions
 {
@@ -100,6 +102,56 @@ namespace BlogApp.API.Extensions
                         )
                     };
                 });
+        }
+
+        public static IServiceCollection AddSwagger(this IServiceCollection services)
+        {
+            services.AddSwaggerGen(s =>
+            {
+                s.SwaggerDoc(
+                    "v1",
+                    new Microsoft.OpenApi.Models.OpenApiInfo
+                    {
+                        Version = "v1",
+                        Title = "BlogApp",
+                        Description = "API for managing blogs",
+                    }
+                );
+
+                s.AddSecurityDefinition(
+                    "bearer",
+                    new OpenApiSecurityScheme
+                    {
+                        Type = SecuritySchemeType.Http,
+                        BearerFormat = "JWT",
+                        In = ParameterLocation.Header,
+                        Scheme = "bearer"
+                    }
+                );
+
+                s.AddSecurityRequirement(
+                    new OpenApiSecurityRequirement
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "bearer"
+                                }
+                            },
+                            new List<string>()
+                        }
+                    }
+                );
+
+                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                s.IncludeXmlComments(xmlPath);
+            });
+
+            return services;
         }
 
         public static async Task InitializeDBAsync(this IServiceProvider serviceProvider)
