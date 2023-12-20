@@ -74,7 +74,7 @@ namespace BlogApp.API.Tests.InMemDatabases
                         Content = "Lorem ipsum...",
                         FeaturedImageUrl = "https://localhost:7055/Images/sample1.jpg",
                         UrlHandle = "url-handle1",
-                        PublishedDate = DateTime.Now,
+                        PublishedDate = new DateTime(2023, 1, 1),
                         Author = "John Doe",
                         IsVisible = true,
                         Categories = new List<Category> { categories[0] }
@@ -92,6 +92,58 @@ namespace BlogApp.API.Tests.InMemDatabases
                         IsVisible = true,
                         Categories = new List<Category> { categories[1] }
                     },
+                    new BlogPost
+                    {
+                        Id = new Guid("3F89F842-DFB4-4C83-BCBE-77A7D4BBCC33"),
+                        Title = "Sample Blog Post 3",
+                        ShortDescription = "This is a sample blog post 3.",
+                        Content = "Lorem ipsum...",
+                        FeaturedImageUrl = "https://localhost:7055/Images/sample3.jpg",
+                        UrlHandle = "url-handle3",
+                        PublishedDate = DateTime.Now,
+                        Author = "Mark Johnson",
+                        IsVisible = true,
+                        Categories = new List<Category> { categories[2] }
+                    },
+                    new BlogPost
+                    {
+                        Id = new Guid("4E6E3F5B-8D4B-4D21-BFBF-8A9C0F187E38"),
+                        Title = "Sample Blog Post 4",
+                        ShortDescription = "This is a sample blog post 4.",
+                        Content = "Lorem ipsum...",
+                        FeaturedImageUrl = "https://localhost:7055/Images/sample4.jpg",
+                        UrlHandle = "url-handle4",
+                        PublishedDate = DateTime.Now,
+                        Author = "Emily Davis",
+                        IsVisible = true,
+                        Categories = new List<Category> { categories[0], categories[1] }
+                    },
+                    new BlogPost
+                    {
+                        Id = new Guid("5A92A8BF-9A7D-4F53-846E-6F8ABEB1A32D"),
+                        Title = "Sample Blog Post 5",
+                        ShortDescription = "This is a sample blog post 5.",
+                        Content = "Lorem ipsum...",
+                        FeaturedImageUrl = "https://localhost:7055/Images/sample5.jpg",
+                        UrlHandle = "url-handle5",
+                        PublishedDate = DateTime.Now,
+                        Author = "Chris Williams",
+                        IsVisible = true,
+                        Categories = new List<Category> { categories[2] }
+                    },
+                    new BlogPost
+                    {
+                        Id = new Guid("6B7C9E3C-4DB8-442D-A5C4-8E3D3564A8A1"),
+                        Title = "Sample Blog Post 6",
+                        ShortDescription = "This is a sample blog post 6.",
+                        Content = "Lorem ipsum...",
+                        FeaturedImageUrl = "https://localhost:7055/Images/sample6.jpg",
+                        UrlHandle = "url-handle6",
+                        PublishedDate = DateTime.Now,
+                        Author = "Alexandra Turner",
+                        IsVisible = true,
+                        Categories = new List<Category> { categories[0], categories[1] }
+                    }
                 };
 
                 databaseContext.BlogPosts.AddRange(blogPosts);

@@ -30,11 +30,16 @@ namespace BlogApp.API.Services
 
         public async Task<PaginatedResult<BlogPostDto>> GetAllAsync(int page, int pageSize)
         {
+            if (page == 0 || pageSize == 0)
+            {
+                throw new InvalidOperationException("Page or PageSize cannot be 0");
+            }
+
             try
             {
                 pageSize = Math.Min(pageSize, 10);
 
-                var query = dbContext.BlogPosts.Include(x => x.Categories);
+                var query = dbContext.BlogPosts.Include(x => x.Categories).OrderBy(x => x.Id);
                 var totalItems = await query.CountAsync();
 
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
@@ -137,6 +142,10 @@ namespace BlogApp.API.Services
                     {
                         blogPost.Categories.Add(existingCategory);
                     }
+                    else
+                    {
+                        throw new InvalidOperationException($"Category not found.");
+                    }
                 }
 
                 await dbContext.BlogPosts.AddAsync(blogPost);
@@ -146,7 +155,7 @@ namespace BlogApp.API.Services
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("Failed to create the blog post.", ex);
+                throw new InvalidOperationException(ex.Message);
             }
         }
 

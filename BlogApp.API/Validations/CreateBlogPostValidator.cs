@@ -7,9 +7,9 @@ namespace BlogApp.API.Validations
     {
         public CreateBlogPostValidator()
         {
-            RuleFor(dto => dto.Title).NotEmpty().MaximumLength(255);
+            RuleFor(dto => dto.Title).NotEmpty().MaximumLength(30);
 
-            RuleFor(dto => dto.ShortDescription).MaximumLength(500);
+            RuleFor(dto => dto.ShortDescription).NotEmpty().MaximumLength(500);
 
             RuleFor(dto => dto.Content).NotEmpty();
 
