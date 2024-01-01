@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BlogApp.API.Data;
+using BlogApp.API.Exceptions;
 using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories;
@@ -32,17 +33,20 @@ namespace BlogApp.API.Services
         {
             if (page == 0 || pageSize == 0)
             {
-                throw new InvalidOperationException("Page or PageSize cannot be 0");
+                throw new BadRequestException("Page or PageSize cannot be 0");
             }
 
             try
             {
                 pageSize = Math.Min(pageSize, 10);
-
                 var query = dbContext.BlogPosts.Include(x => x.Categories).OrderBy(x => x.Id);
                 var totalItems = await query.CountAsync();
-
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+                if (totalItems != 0 && page > totalPages)
+                {
+                    throw new BadRequestException($"Page cannot be greater than {totalPages}");
+                }
 
                 var blogPosts = await query
                     .Skip((page - 1) * pageSize)
@@ -62,58 +66,47 @@ namespace BlogApp.API.Services
 
                 return result;
             }
-            catch (Exception ex)
+            catch (BadRequestException)
             {
-                throw new InvalidOperationException("Failed to retrieve blog posts.", ex);
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException("Unexpected error occurred", e);
             }
         }
 
-        public async Task<BlogPostDto?> GetByIdAsync(Guid id)
+        public async Task<BlogPostDto> GetByIdAsync(Guid id)
         {
             try
             {
                 var blogPost = await dbContext.BlogPosts
                     .Include(x => x.Categories)
                     .FirstOrDefaultAsync(x => x.Id == id);
+                _ = blogPost ?? throw new NotFoundException("Blog post not found.");
 
-                if (blogPost != null)
-                {
-                    return mapper.Map<BlogPostDto>(blogPost);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Blog post not found.");
-                }
+                return mapper.Map<BlogPostDto>(blogPost);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException("Failed to retrieve a blog post by ID.", ex);
+                throw;
             }
         }
 
-        public async Task<BlogPostDto?> GetByUrlHandleAsync(string urlHandle)
+        public async Task<BlogPostDto> GetByUrlHandleAsync(string urlHandle)
         {
             try
             {
                 var blogPost = await dbContext.BlogPosts
                     .Include(x => x.Categories)
                     .FirstOrDefaultAsync(x => x.UrlHandle == urlHandle);
+                _ = blogPost ?? throw new NotFoundException("Blog post not found.");
 
-                if (blogPost != null)
-                {
-                    return mapper.Map<BlogPostDto>(blogPost);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Blog post not found.");
-                }
+                return mapper.Map<BlogPostDto>(blogPost);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException(
-                    "Failed to retrieve a blog post by URL handle.",
-                    ex
-                );
+                throw;
             }
         }
 
@@ -137,15 +130,9 @@ namespace BlogApp.API.Services
                     var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
                         c => c.Id == categoryGuid
                     );
+                    _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
-                    if (existingCategory != null)
-                    {
-                        blogPost.Categories.Add(existingCategory);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Category not found.");
-                    }
+                    blogPost.Categories.Add(existingCategory);
                 }
 
                 await dbContext.BlogPosts.AddAsync(blogPost);
@@ -153,13 +140,13 @@ namespace BlogApp.API.Services
 
                 return mapper.Map<BlogPostDto>(blogPost);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException(ex.Message);
+                throw;
             }
         }
 
-        public async Task<BlogPostDto?> UpdateAsync(Guid id, UpdateBlogPostRequestDto request)
+        public async Task<BlogPostDto> UpdateAsync(Guid id, UpdateBlogPostRequestDto request)
         {
             var validation = await updateBlogPostValidator.ValidateAsync(request);
             if (!validation.IsValid)
@@ -175,37 +162,29 @@ namespace BlogApp.API.Services
                 var existingBlogPost = await dbContext.BlogPosts
                     .Include(x => x.Categories)
                     .FirstOrDefaultAsync(x => x.Id == id);
+                _ = existingBlogPost ?? throw new NotFoundException("Blog post not found.");
 
-                if (existingBlogPost != null)
+                mapper.Map(request, existingBlogPost);
+
+                existingBlogPost.Categories.Clear();
+
+                foreach (var categoryGuid in request.Categories)
                 {
-                    mapper.Map(request, existingBlogPost);
-
-                    existingBlogPost.Categories.Clear();
-
-                    foreach (var categoryGuid in request.Categories)
+                    var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
+                        c => c.Id == categoryGuid
+                    );
+                    if (existingCategory != null)
                     {
-                        var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
-                            c => c.Id == categoryGuid
-                        );
-
-                        if (existingCategory != null)
-                        {
-                            existingBlogPost.Categories.Add(existingCategory);
-                        }
+                        existingBlogPost.Categories.Add(existingCategory);
                     }
-
-                    await dbContext.SaveChangesAsync();
-
-                    return mapper.Map<BlogPostDto>(existingBlogPost);
                 }
-                else
-                {
-                    throw new InvalidOperationException("Blog post not found.");
-                }
+                await dbContext.SaveChangesAsync();
+
+                return mapper.Map<BlogPostDto>(existingBlogPost);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException("Failed to update the blog post.", ex);
+                throw;
             }
         }
 
@@ -216,21 +195,15 @@ namespace BlogApp.API.Services
                 var existingBlogPost = await dbContext.BlogPosts.SingleOrDefaultAsync(
                     x => x.Id == id
                 );
+                _ = existingBlogPost ?? throw new NotFoundException("Blog post not found.");
 
-                if (existingBlogPost != null)
-                {
-                    dbContext.BlogPosts.Remove(existingBlogPost);
-                    await dbContext.SaveChangesAsync();
-                    return true;
-                }
-                else
-                {
-                    throw new InvalidOperationException("Blog post not found.");
-                }
+                dbContext.BlogPosts.Remove(existingBlogPost);
+                await dbContext.SaveChangesAsync();
+                return true;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException("Failed to delete the blog post.", ex);
+                throw;
             }
         }
     }

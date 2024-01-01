@@ -54,7 +54,7 @@ namespace BlogApp.API.Controllers
         public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequestDto request)
         {
             var category = await categoryRepository.CreateAsync(request);
-            return Ok(category);
+            return CreatedAtAction(nameof(GetCategoryById), new { id = category.Id }, category);
         }
 
         /// <summary>

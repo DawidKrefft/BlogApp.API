@@ -1,12 +1,13 @@
 ﻿using AutoMapper;
 using BlogApp.API.Data;
-using BlogApp.API.Models.Domain;
+using BlogApp.API.Exceptions;
 using BlogApp.API.Models.DTO;
 using BlogApp.API.Services;
 using BlogApp.API.Tests.InMemDatabases;
 using BlogApp.API.Validations;
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlogApp.API.Tests.Services
 {
@@ -72,10 +73,13 @@ namespace BlogApp.API.Tests.Services
         [InlineData(0, 5)]
         [InlineData(1, 0)]
         [InlineData(0, 0)]
-        public async Task GetAllAsync_WithInvalidInput_ShouldReturnException(int page, int pageSize)
+        public async Task GetAllAsync_WithInvalidInput_ShouldReturnBadRequestException(
+            int page,
+            int pageSize
+        )
         {
             // Act and Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var exception = await Assert.ThrowsAsync<BadRequestException>(async () =>
             {
                 await blogPostService.GetAllAsync(page, pageSize);
             });
@@ -83,7 +87,7 @@ namespace BlogApp.API.Tests.Services
         }
 
         // ******************************************************
-        //GetByIdAsync(Guid id)
+        // GetByIdAsync(Guid id)
         // ******************************************************
 
         [Fact]
@@ -131,12 +135,12 @@ namespace BlogApp.API.Tests.Services
             await FluentActions
                 .Invoking(async () => await blogPostService.GetByIdAsync(nonExistentBlogPostId))
                 .Should()
-                .ThrowAsync<InvalidOperationException>()
-                .WithMessage("Failed to retrieve a blog post by ID.");
+                .ThrowAsync<NotFoundException>()
+                .WithMessage("Blog post not found.");
         }
 
         // ******************************************************
-        // CreateAsync(CreateCategoryRequestDto request)
+        // CreateAsync(CreateBlogPostRequestDto request)
         // ******************************************************
 
         [Fact]
@@ -153,7 +157,7 @@ namespace BlogApp.API.Tests.Services
                 PublishedDate = new DateTime(2023, 1, 1),
                 Author = "John Doe",
                 IsVisible = true,
-                Categories = new Guid[]
+                Categories = new List<Guid>
                 {
                     new Guid("1B24C116-A18F-4949-9F1A-60A88B30BB67"),
                     new Guid("C5F2C59A-EAC1-44A1-8E64-524EB804A9F2")
@@ -221,7 +225,7 @@ namespace BlogApp.API.Tests.Services
                 PublishedDate = DateTime.Parse(publishedDate),
                 Author = author,
                 IsVisible = isVisible,
-                Categories = categoryIds?.Select(id => new Guid(id)).ToArray()
+                Categories = categoryIds?.Select(id => new Guid(id)).ToList()
             };
 
             // Act and Assert
@@ -231,10 +235,174 @@ namespace BlogApp.API.Tests.Services
                 .ThrowAsync<Exception>()
                 .Where(
                     exception =>
-                        (exception is ValidationException)
-                        || (exception is InvalidOperationException)
+                        (exception is ValidationException) || (exception is NotFoundException)
                 )
                 .WithMessage(expectedErrorMessage);
+        }
+
+        // ******************************************************
+        // UpdateAsync(Guid id, UpdateBlogPostRequestDto request)
+        // ******************************************************
+
+        [Fact]
+        public async Task UpdateAsync_WithValidInput_ShouldUpdateBlogPostDto()
+        {
+            // Arrange
+            var existingBlogPostId = new Guid("1E3279E3-4810-41C8-831C-3E0A10C4EAC3");
+            var updateRequest = new UpdateBlogPostRequestDto
+            {
+                Title = "Updated Blog Post Title",
+                ShortDescription = "Updated short description.",
+                Content = "Updated content of the blog post.",
+                FeaturedImageUrl = "https://localhost:7055/Images/updated-sample.jpg",
+                UrlHandle = "updated-url-handle",
+                PublishedDate = new DateTime(2023, 2, 15),
+                Author = "Jane Doe",
+                IsVisible = false,
+                Categories = new List<Guid>
+                {
+                    new Guid("B0385524-D562-48AC-8A39-08DBC68D59C0"),
+                    new Guid("C5F2C59A-EAC1-44A1-8E64-524EB804A9F2")
+                }
+            };
+
+            // Act
+            var result = await blogPostService.UpdateAsync(existingBlogPostId, updateRequest);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeOfType<BlogPostDto>();
+
+            result.Title.Should().Be(updateRequest.Title);
+            result.ShortDescription.Should().Be(updateRequest.ShortDescription);
+            result.Content.Should().Be(updateRequest.Content);
+            result.FeaturedImageUrl.Should().Be(updateRequest.FeaturedImageUrl);
+            result.UrlHandle.Should().Be(updateRequest.UrlHandle);
+            result.PublishedDate.Should().Be(updateRequest.PublishedDate);
+            result.Author.Should().Be(updateRequest.Author);
+            result.IsVisible.Should().Be(updateRequest.IsVisible);
+            result.Categories.Should().HaveCount(2);
+            result.Categories.Select(c => c.Id).Should().BeEquivalentTo(updateRequest.Categories);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_WithNonExistingBlogPost_ShouldThrowNotFoundException()
+        {
+            // Arrange
+            var nonExistingBlogPostId = new Guid("B0385524-D562-48AC-8A39-08DBC68D5000");
+            var updateRequest = new UpdateBlogPostRequestDto
+            {
+                Title = "Updated Blog Post Title",
+                ShortDescription = "Updated short description.",
+                Content = "Updated content of the blog post.",
+                FeaturedImageUrl = "https://localhost:7055/Images/updated-sample.jpg",
+                UrlHandle = "updated-url-handle",
+                PublishedDate = new DateTime(2023, 2, 15),
+                Author = "Jane Doe",
+                IsVisible = false,
+                Categories = new List<Guid>
+                {
+                    new Guid("B0385524-D562-48AC-8A39-08DBC68D59C0"),
+                    new Guid("C5F2C59A-EAC1-44A1-8E64-524EB804A9F2")
+                }
+            };
+
+            // Act and Assert
+            await FluentActions
+                .Invoking(
+                    async () =>
+                        await blogPostService.UpdateAsync(nonExistingBlogPostId, updateRequest)
+                )
+                .Should()
+                .ThrowAsync<NotFoundException>()
+                .WithMessage("Blog post not found.");
+        }
+
+        [Fact]
+        public async Task UpdateAsync_WithInvalidInput_ShouldThrowValidationException()
+        {
+            // Arrange
+            var existingBlogPostId = new Guid("1E3279E3-4810-41C8-831C-3E0A10C4EAC3");
+            var updateRequest = new UpdateBlogPostRequestDto { };
+
+            // Simulate invalid input
+            updateRequest.Title = string.Empty;
+
+            // Act and Assert
+            await FluentActions
+                .Invoking(
+                    async () => await blogPostService.UpdateAsync(existingBlogPostId, updateRequest)
+                )
+                .Should()
+                .ThrowAsync<ValidationException>()
+                .WithMessage(
+                    "'Title' must not be empty., "
+                        + "'Short Description' must not be empty., "
+                        + "'Content' must not be empty., "
+                        + "'Url Handle' must not be empty., "
+                        + "'Published Date' must not be empty., "
+                        + "'Author' must not be empty."
+                );
+        }
+
+        [Fact]
+        public async Task UpdateAsync_WithNonExistingCategory_ShouldThrowValidationException()
+        {
+            // Arrange
+            var existingBlogPostId = new Guid("1E3279E3-4810-41C8-831C-3E0A10C4EAC3");
+            var updateRequest = new UpdateBlogPostRequestDto
+            {
+                Title = "Updated Blog Post Title",
+                ShortDescription = "Updated short description.",
+                Content = "Updated content of the blog post.",
+                FeaturedImageUrl = "https://localhost:7055/Images/updated-sample.jpg",
+                UrlHandle = "updated-url-handle",
+                PublishedDate = new DateTime(2023, 2, 15),
+                Author = "Jane Doe",
+                IsVisible = false,
+                Categories = new List<Guid> { new Guid("B0385524-D562-48AC-8A39-08DBC68D5999") }
+            };
+
+            // Act
+            await blogPostService.UpdateAsync(existingBlogPostId, updateRequest);
+
+            // Assert
+            var updatedBlogPost = await dbContext.BlogPosts
+                .Include(x => x.Categories)
+                .FirstOrDefaultAsync(x => x.Id == existingBlogPostId);
+
+            updatedBlogPost.Categories.Should().BeEmpty();
+        }
+
+        // ******************************************************
+        // DeleteAsync(Guid id)
+        // ******************************************************
+
+        [Fact]
+        public async Task DeleteAsync_WithValidBlogPostId_ShouldReturnTrue()
+        {
+            // Arrange
+            var existingBlogPost = dbContext.BlogPosts.FirstOrDefault();
+
+            // Act
+            var result = await blogPostService.DeleteAsync(existingBlogPost.Id);
+
+            // Assert
+            result.Should().BeTrue();
+            dbContext.BlogPosts.Should().NotContain(existingBlogPost);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithNonExistentBlogPostId_ShouldThrowNotFoundException()
+        {
+            // Arrange
+            var nonExistentBlogPostId = new Guid("1E3279E3-4810-41C8-831C-3E0A10C40000");
+
+            // Act
+            Func<Task> act = async () => await blogPostService.DeleteAsync(nonExistentBlogPostId);
+
+            // Assert
+            await act.Should().ThrowAsync<NotFoundException>().WithMessage("Blog post not found.");
         }
     }
 }

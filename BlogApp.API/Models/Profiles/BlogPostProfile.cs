@@ -10,9 +10,6 @@ public class BlogPostProfile : Profile
             .ForMember(dest => dest.Categories, opt => opt.Ignore())
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
-        CreateMap<BlogPost, BlogPostDto>()
-            .ForMember(dest => dest.Categories, opt => opt.MapFrom(src => src.Categories));
-
         CreateMap<UpdateBlogPostRequestDto, BlogPost>()
             .ForMember(dest => dest.Categories, opt => opt.Ignore());
 

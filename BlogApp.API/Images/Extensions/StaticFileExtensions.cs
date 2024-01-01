@@ -10,7 +10,7 @@ namespace BlogApp.API.Images.Extensions
                 new StaticFileOptions
                 {
                     FileProvider = new PhysicalFileProvider(
-                        Path.Combine(Directory.GetCurrentDirectory(), "Images")
+                        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Images")
                     ),
                     RequestPath = "/Images"
                 }

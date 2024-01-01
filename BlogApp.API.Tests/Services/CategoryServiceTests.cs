@@ -7,7 +7,7 @@ using FluentAssertions;
 using FluentValidation;
 using BlogApp.API.Tests.InMemDatabases;
 using BlogApp.API.Validations;
-using FakeItEasy;
+using BlogApp.API.Exceptions;
 
 namespace BlogApp.API.Tests.Services
 {
@@ -116,8 +116,8 @@ namespace BlogApp.API.Tests.Services
             await FluentActions
                 .Invoking(async () => await categoryService.GetByIdAsync(nonExistentCategoryId))
                 .Should()
-                .ThrowAsync<InvalidOperationException>()
-                .WithMessage("Failed to retrieve a category by ID.");
+                .ThrowAsync<NotFoundException>()
+                .WithMessage("Category not found.");
         }
 
         // ******************************************************
@@ -192,34 +192,6 @@ namespace BlogApp.API.Tests.Services
                 .WithMessage(expectedErrorMessage);
         }
 
-        [Fact]
-        public async Task CreateAsync_WithDatabaseException_ShouldThrowInvalidOperationException()
-        {
-            // Arrange
-            var createCategoryRequest = new CreateCategoryRequestDto
-            {
-                Name = "name",
-                UrlHandle = "url-handle"
-            };
-
-            // Act
-            async Task Act()
-            {
-                // if sth else goes wrong other than invalid inputs
-                var service = new CategoryService(
-                    dbContext,
-                    A.Fake<IMapper>(),
-                    new CreateCategoryValidator(),
-                    A.Fake<IValidator<UpdateCategoryRequestDto>>()
-                );
-                await service.CreateAsync(createCategoryRequest);
-            }
-
-            // Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(Act);
-            exception.Message.Should().Be("Failed to create the category.");
-        }
-
         // ******************************************************
         // UpdateAsync(Guid id, UpdateCategoryRequestDto request)
         // ******************************************************
@@ -280,9 +252,7 @@ namespace BlogApp.API.Tests.Services
                 await categoryService.UpdateAsync(nonExistentCategoryId, request);
 
             // Assert
-            await act.Should()
-                .ThrowAsync<InvalidOperationException>()
-                .WithMessage("Category not found.");
+            await act.Should().ThrowAsync<NotFoundException>().WithMessage("Category not found.");
         }
 
         [Theory]
@@ -331,9 +301,7 @@ namespace BlogApp.API.Tests.Services
             Func<Task> act = async () => await categoryService.DeleteAsync(nonExistentCategoryId);
 
             // Assert
-            await act.Should()
-                .ThrowAsync<InvalidOperationException>()
-                .WithMessage("Category not found.");
+            await act.Should().ThrowAsync<NotFoundException>().WithMessage("Category not found.");
         }
     }
 }

@@ -5,6 +5,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using BlogApp.API.Repositories;
 using FluentValidation;
+using BlogApp.API.Exceptions;
 
 namespace BlogApp.API.Services
 {
@@ -38,11 +39,14 @@ namespace BlogApp.API.Services
             try
             {
                 pageSize = Math.Min(pageSize, 50);
-
                 var query = dbContext.Categories.AsNoTracking();
                 var totalItems = await query.CountAsync();
-
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+                if (totalItems != 0 && page > totalPages)
+                {
+                    throw new BadRequestException($"Page cannot be greater than {totalPages}");
+                }
 
                 var categories = await query
                     .Skip((page - 1) * pageSize)
@@ -62,9 +66,13 @@ namespace BlogApp.API.Services
 
                 return result;
             }
-            catch (Exception ex)
+            catch (BadRequestException)
             {
-                throw new InvalidOperationException("Failed to retrieve categories.", ex);
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException("Unexpected error occurred", e);
             }
         }
 
@@ -75,18 +83,13 @@ namespace BlogApp.API.Services
                 var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
                     c => c.Id == id
                 );
-                if (existingCategory != null)
-                {
-                    return mapper.Map<CategoryDto>(existingCategory);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Category not found.");
-                }
+                _ = existingCategory ?? throw new NotFoundException("Category not found.");
+
+                return mapper.Map<CategoryDto>(existingCategory);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException("Failed to retrieve a category by ID.", ex);
+                throw;
             }
         }
 
@@ -96,11 +99,11 @@ namespace BlogApp.API.Services
             {
                 return await dbContext.Categories.FirstOrDefaultAsync(c => c.Id == id);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 throw new InvalidOperationException(
                     "Failed to retrieve a category domain model by ID.",
-                    ex
+                    e
                 );
             }
         }
@@ -124,9 +127,9 @@ namespace BlogApp.API.Services
 
                 return mapper.Map<CategoryDto>(category);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException("Failed to create the category.", ex);
+                throw;
             }
         }
 
@@ -146,19 +149,15 @@ namespace BlogApp.API.Services
                 var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
                     c => c.Id == id
                 );
-
-                if (existingCategory == null)
-                {
-                    throw new InvalidOperationException("Category not found.");
-                }
+                _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
                 mapper.Map(request, existingCategory);
                 await dbContext.SaveChangesAsync();
                 return mapper.Map<CategoryDto>(existingCategory);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException(ex.Message);
+                throw;
             }
         }
 
@@ -169,19 +168,15 @@ namespace BlogApp.API.Services
                 var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
                     c => c.Id == id
                 );
-
-                if (existingCategory == null)
-                {
-                    throw new InvalidOperationException("Category not found.");
-                }
+                _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
                 dbContext.Categories.Remove(existingCategory);
                 await dbContext.SaveChangesAsync();
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw new InvalidOperationException(ex.Message);
+                throw;
             }
         }
     }

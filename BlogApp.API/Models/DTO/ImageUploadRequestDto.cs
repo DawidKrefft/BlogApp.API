@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-namespace BlogApp.API.Models.DTO
+﻿namespace BlogApp.API.Models.DTO
 {
     public class ImageUploadRequestDto
     {

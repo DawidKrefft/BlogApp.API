@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BlogApp.API.Data;
+using BlogApp.API.Exceptions;
 using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories;
@@ -34,14 +35,22 @@ namespace BlogApp.API.Services
 
         public async Task<PaginatedResult<BlogImageDto>> GetAllAsync(int page, int pageSize)
         {
+            if (page == 0 || pageSize == 0)
+            {
+                throw new InvalidOperationException("Page or PageSize cannot be 0");
+            }
+
             try
             {
                 pageSize = Math.Min(pageSize, 10);
-
                 var query = dbContext.BlogImages.AsNoTracking();
                 var totalItems = await query.CountAsync();
-
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+                if (totalItems != 0 && page > totalPages)
+                {
+                    throw new BadRequestException($"Page cannot be greater than {totalPages}");
+                }
 
                 var blogImages = await query
                     .Skip((page - 1) * pageSize)
@@ -61,9 +70,13 @@ namespace BlogApp.API.Services
 
                 return result;
             }
-            catch (Exception ex)
+            catch (BadRequestException)
             {
-                throw new InvalidOperationException("Failed to retrieve blog images.", ex);
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException("Unexpected error occurred", e);
             }
         }
 
@@ -113,11 +126,7 @@ namespace BlogApp.API.Services
         public async Task<BlogImage> DeleteAsync(Guid id)
         {
             var existingImage = await dbContext.BlogImages.FirstOrDefaultAsync(c => c.Id == id);
-
-            if (existingImage is null)
-            {
-                return null;
-            }
+            _ = existingImage ?? throw new NotFoundException("Image not found.");
 
             // Retrieve the file path from the entity
             var imagePath = Path.Combine(
@@ -126,17 +135,15 @@ namespace BlogApp.API.Services
                 $"{existingImage.FileName}{existingImage.FileExtension}"
             );
 
-            dbContext.BlogImages.Remove(existingImage);
-
             try
             {
+                dbContext.BlogImages.Remove(existingImage);
                 await dbContext.SaveChangesAsync();
-
                 File.Delete(imagePath);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                await Console.Out.WriteLineAsync($"{ex}");
+                await Console.Out.WriteLineAsync($"{e}");
             }
 
             return existingImage;

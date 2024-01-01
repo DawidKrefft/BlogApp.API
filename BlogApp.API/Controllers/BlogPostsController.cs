@@ -1,4 +1,5 @@
-﻿using BlogApp.API.Models.DTO;
+﻿using BlogApp.API.Models.Domain;
+using BlogApp.API.Models.DTO;
 using BlogApp.API.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -66,7 +67,7 @@ namespace BlogApp.API.Controllers
         public async Task<IActionResult> CreateBlogPost([FromBody] CreateBlogPostRequestDto request)
         {
             var blogPost = await blogPostRepository.CreateAsync(request);
-            return Ok(blogPost);
+            return CreatedAtAction(nameof(GetBlogPostById), new { id = blogPost.Id }, blogPost);
         }
 
         /// <summary>
