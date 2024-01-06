@@ -22,7 +22,7 @@ public class Program
         builder.Services.AddDbContexts(builder.Configuration);
 
         // Repository Configuration
-        builder.Services.AddRepositories();
+        builder.Services.AddServicesAndRepositories();
 
         // Security and Identity Configuration
         builder.Services.AddBlogAppIdentity();

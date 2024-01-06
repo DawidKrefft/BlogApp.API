@@ -1,5 +1,5 @@
 ﻿using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+using BlogApp.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,11 +9,11 @@ namespace BlogApp.API.Controllers
     [ApiController]
     public class ImagesController : ControllerBase
     {
-        private readonly IImageRepository imageRepository;
+        private readonly IImageService imageService;
 
-        public ImagesController(IImageRepository imageRepository)
+        public ImagesController(IImageService imageService)
         {
-            this.imageRepository = imageRepository;
+            this.imageService = imageService;
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace BlogApp.API.Controllers
             [FromQuery] int pageSize = 5
         )
         {
-            var paginatedResult = await imageRepository.GetAllAsync(page, pageSize);
+            var paginatedResult = await imageService.GetAllAsync(page, pageSize);
             return Ok(paginatedResult);
         }
 
@@ -41,7 +41,7 @@ namespace BlogApp.API.Controllers
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> UploadImage([FromForm] ImageUploadRequestDto request)
         {
-            var blogImage = await imageRepository.Upload(request);
+            var blogImage = await imageService.Upload(request);
             return Ok(blogImage);
         }
 
@@ -54,7 +54,7 @@ namespace BlogApp.API.Controllers
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> DeleteImage([FromRoute] Guid id)
         {
-            var deletedImage = await imageRepository.DeleteAsync(id);
+            var deletedImage = await imageService.DeleteAsync(id);
             return deletedImage != null ? NoContent() : NotFound();
         }
     }

@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using BlogApp.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using BlogApp.API.Repositories;
 using Newtonsoft.Json;
 using System.Net;
 using System.Text;
 using FluentValidation;
+using BlogApp.API.Services.Interfaces;
 
 namespace BlogApp.API.IntegrationTests.Controllers
 {
@@ -17,7 +17,7 @@ namespace BlogApp.API.IntegrationTests.Controllers
     {
         private HttpClient _client;
 
-        private Mock<IAuthRepository> _authServiceMock = new Mock<IAuthRepository>();
+        private Mock<IAuthService> _authServiceMock = new Mock<IAuthService>();
 
         public AuthControllerTests(WebApplicationFactory<Program> factory)
         {
@@ -33,7 +33,7 @@ namespace BlogApp.API.IntegrationTests.Controllers
 
                         services.Remove(dbContextOptions);
 
-                        services.AddSingleton<IAuthRepository>(_authServiceMock.Object);
+                        services.AddSingleton<IAuthService>(_authServiceMock.Object);
 
                         services.AddDbContext<AuthDbContext>(
                             options => options.UseInMemoryDatabase("AuthDb")

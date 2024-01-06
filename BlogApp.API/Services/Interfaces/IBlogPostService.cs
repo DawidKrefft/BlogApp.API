@@ -1,8 +1,8 @@
 ﻿using BlogApp.API.Models.DTO;
 
-namespace BlogApp.API.Repositories
+namespace BlogApp.API.Services.Interfaces
 {
-    public interface IBlogPostRepository
+    public interface IBlogPostService
     {
         Task<PaginatedResult<BlogPostDto>> GetAllAsync(int page, int pageSize);
         Task<BlogPostDto> GetByIdAsync(Guid id);

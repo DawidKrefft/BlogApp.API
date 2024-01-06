@@ -1,6 +1,8 @@
 ﻿using BlogApp.API.Data;
+using BlogApp.API.Repositories.Interfaces;
 using BlogApp.API.Repositories;
 using BlogApp.API.Services;
+using BlogApp.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,14 +33,21 @@ namespace BlogApp.API.Extensions
             });
         }
 
-        public static IServiceCollection AddRepositories(this IServiceCollection services)
+        public static IServiceCollection AddServicesAndRepositories(this IServiceCollection x)
         {
-            services.AddScoped<ICategoryRepository, CategoryService>();
-            services.AddScoped<IBlogPostRepository, BlogPostService>();
-            services.AddScoped<IImageRepository, ImageService>();
-            services.AddTransient<IAuthRepository, AuthService>();
+            // Register repositories
+            x.AddScoped<ICategoryRepository, CategoryRepository>();
+            x.AddScoped<IBlogPostRepository, BlogPostRepository>();
+            x.AddScoped<IImageRepository, ImageRepository>();
+            x.AddScoped<IAuthRepository, AuthRepository>();
 
-            return services;
+            // Register services
+            x.AddScoped<ICategoryService, CategoryService>();
+            x.AddScoped<IBlogPostService, BlogPostService>();
+            x.AddScoped<IImageService, ImageService>();
+            x.AddTransient<IAuthService, AuthService>();
+
+            return x;
         }
 
         public static IServiceCollection AddDbContexts(

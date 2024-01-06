@@ -8,12 +8,15 @@ using FluentValidation;
 using BlogApp.API.Tests.InMemDatabases;
 using BlogApp.API.Validations;
 using BlogApp.API.Exceptions;
+using BlogApp.API.Repositories;
+using BlogApp.API.Repositories.Interfaces;
 
 namespace BlogApp.API.Tests.Services
 {
     public class CategoryServiceTests
     {
         private readonly ApplicationDbContext dbContext;
+        private readonly ICategoryRepository categoryRepository;
         private readonly IMapper mapper;
         private readonly IValidator<CreateCategoryRequestDto> createCategoryValidator;
         private readonly IValidator<UpdateCategoryRequestDto> updateCategoryValidator;
@@ -23,11 +26,12 @@ namespace BlogApp.API.Tests.Services
         {
             var inMemoryContext = new InMemApplicationDbContext();
             dbContext = inMemoryContext.GetDatabaseContext().Result;
+            categoryRepository = new CategoryRepository(dbContext);
             mapper = CreateMapper();
             createCategoryValidator = new CreateCategoryValidator();
             updateCategoryValidator = new UpdateCategoryValidator();
             categoryService = new CategoryService(
-                dbContext,
+                categoryRepository,
                 mapper,
                 createCategoryValidator,
                 updateCategoryValidator

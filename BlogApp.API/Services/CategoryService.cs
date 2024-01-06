@@ -1,29 +1,29 @@
-﻿using BlogApp.API.Data;
-using BlogApp.API.Models.Domain;
+﻿using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using BlogApp.API.Repositories;
 using FluentValidation;
 using BlogApp.API.Exceptions;
+using BlogApp.API.Services.Interfaces;
+using BlogApp.API.Repositories.Interfaces;
 
 namespace BlogApp.API.Services
 {
-    public class CategoryService : ICategoryRepository
+    public class CategoryService : ICategoryService
     {
-        private readonly ApplicationDbContext dbContext;
+        private readonly ICategoryRepository categoryRepository;
         private readonly IMapper mapper;
         private readonly IValidator<CreateCategoryRequestDto> createCategoryValidator;
         private readonly IValidator<UpdateCategoryRequestDto> updateCategoryValidator;
 
         public CategoryService(
-            ApplicationDbContext dbContext,
+            ICategoryRepository categoryRepository,
             IMapper mapper,
             IValidator<CreateCategoryRequestDto> createCategoryValidator,
             IValidator<UpdateCategoryRequestDto> updateCategoryValidator
         )
         {
-            this.dbContext = dbContext;
+            this.categoryRepository = categoryRepository;
             this.mapper = mapper;
             this.createCategoryValidator = createCategoryValidator;
             this.updateCategoryValidator = updateCategoryValidator;
@@ -39,7 +39,7 @@ namespace BlogApp.API.Services
             try
             {
                 pageSize = Math.Min(pageSize, 50);
-                var query = dbContext.Categories.AsNoTracking();
+                var query = await categoryRepository.GetAllAsync();
                 var totalItems = await query.CountAsync();
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
@@ -80,9 +80,7 @@ namespace BlogApp.API.Services
         {
             try
             {
-                var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
-                    c => c.Id == id
-                );
+                var existingCategory = await categoryRepository.GetByIdAsync(id);
                 _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
                 return mapper.Map<CategoryDto>(existingCategory);
@@ -97,7 +95,7 @@ namespace BlogApp.API.Services
         {
             try
             {
-                return await dbContext.Categories.FirstOrDefaultAsync(c => c.Id == id);
+                return await categoryRepository.GetByIdAsync(id);
             }
             catch (Exception e)
             {
@@ -121,9 +119,17 @@ namespace BlogApp.API.Services
             }
             try
             {
+                var categoryExists = await categoryRepository.CategoryExistsByNameAsync(
+                    request.Name
+                );
+                _ = categoryExists
+                    ? throw new ValidationException(
+                        $"Category with name '{request.Name}' already exists."
+                    )
+                    : categoryExists;
+
                 var category = mapper.Map<Category>(request);
-                await dbContext.Categories.AddAsync(category);
-                await dbContext.SaveChangesAsync();
+                await categoryRepository.AddAsync(category);
 
                 return mapper.Map<CategoryDto>(category);
             }
@@ -146,13 +152,24 @@ namespace BlogApp.API.Services
             }
             try
             {
-                var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
-                    c => c.Id == id
-                );
+                var existingCategory = await categoryRepository.GetByIdAsync(id);
                 _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
+                if (request.Name != existingCategory.Name)
+                {
+                    var categoryExists = await categoryRepository.CategoryExistsByNameAsync(
+                        request.Name
+                    );
+                    _ = categoryExists
+                        ? throw new ValidationException(
+                            $"Category with name '{request.Name}' already exists."
+                        )
+                        : categoryExists;
+                }
+
                 mapper.Map(request, existingCategory);
-                await dbContext.SaveChangesAsync();
+                await categoryRepository.UpdateAsync(existingCategory);
+
                 return mapper.Map<CategoryDto>(existingCategory);
             }
             catch (Exception e)
@@ -165,13 +182,10 @@ namespace BlogApp.API.Services
         {
             try
             {
-                var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
-                    c => c.Id == id
-                );
+                var existingCategory = await categoryRepository.GetByIdAsync(id);
                 _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
-                dbContext.Categories.Remove(existingCategory);
-                await dbContext.SaveChangesAsync();
+                await categoryRepository.DeleteAsync(existingCategory);
                 return true;
             }
             catch (Exception e)

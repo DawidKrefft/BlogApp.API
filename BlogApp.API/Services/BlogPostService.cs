@@ -1,29 +1,32 @@
 ﻿using AutoMapper;
-using BlogApp.API.Data;
 using BlogApp.API.Exceptions;
 using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+using BlogApp.API.Repositories.Interfaces;
+using BlogApp.API.Services.Interfaces;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlogApp.API.Services
 {
-    public class BlogPostService : IBlogPostRepository
+    public class BlogPostService : IBlogPostService
     {
-        private readonly ApplicationDbContext dbContext;
+        private readonly IBlogPostRepository blogPostRepository;
+        private readonly ICategoryRepository categoryRepository;
         private readonly IMapper mapper;
         private readonly IValidator<CreateBlogPostRequestDto> createBlogPostValidator;
         private readonly IValidator<UpdateBlogPostRequestDto> updateBlogPostValidator;
 
         public BlogPostService(
-            ApplicationDbContext dbContext,
+            IBlogPostRepository blogPostRepository,
+            ICategoryRepository categoryRepository,
             IMapper mapper,
             IValidator<CreateBlogPostRequestDto> createBlogPostValidator,
             IValidator<UpdateBlogPostRequestDto> updateBlogPostValidator
         )
         {
-            this.dbContext = dbContext;
+            this.blogPostRepository = blogPostRepository;
+            this.categoryRepository = categoryRepository;
             this.mapper = mapper;
             this.createBlogPostValidator = createBlogPostValidator;
             this.updateBlogPostValidator = updateBlogPostValidator;
@@ -39,7 +42,7 @@ namespace BlogApp.API.Services
             try
             {
                 pageSize = Math.Min(pageSize, 10);
-                var query = dbContext.BlogPosts.Include(x => x.Categories).OrderBy(x => x.Id);
+                var query = await blogPostRepository.GetAllWithCategoriesAsync();
                 var totalItems = await query.CountAsync();
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
@@ -80,9 +83,7 @@ namespace BlogApp.API.Services
         {
             try
             {
-                var blogPost = await dbContext.BlogPosts
-                    .Include(x => x.Categories)
-                    .FirstOrDefaultAsync(x => x.Id == id);
+                var blogPost = await blogPostRepository.GetByIdWithCategoriesAsync(id);
                 _ = blogPost ?? throw new NotFoundException("Blog post not found.");
 
                 return mapper.Map<BlogPostDto>(blogPost);
@@ -97,9 +98,7 @@ namespace BlogApp.API.Services
         {
             try
             {
-                var blogPost = await dbContext.BlogPosts
-                    .Include(x => x.Categories)
-                    .FirstOrDefaultAsync(x => x.UrlHandle == urlHandle);
+                var blogPost = await blogPostRepository.GetByUrlHandleAsync(urlHandle);
                 _ = blogPost ?? throw new NotFoundException("Blog post not found.");
 
                 return mapper.Map<BlogPostDto>(blogPost);
@@ -127,16 +126,12 @@ namespace BlogApp.API.Services
 
                 foreach (var categoryGuid in request.Categories)
                 {
-                    var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
-                        c => c.Id == categoryGuid
-                    );
+                    var existingCategory = await categoryRepository.GetByIdAsync(categoryGuid);
                     _ = existingCategory ?? throw new NotFoundException("Category not found.");
 
                     blogPost.Categories.Add(existingCategory);
                 }
-
-                await dbContext.BlogPosts.AddAsync(blogPost);
-                await dbContext.SaveChangesAsync();
+                await blogPostRepository.AddAsync(blogPost);
 
                 return mapper.Map<BlogPostDto>(blogPost);
             }
@@ -159,9 +154,7 @@ namespace BlogApp.API.Services
             }
             try
             {
-                var existingBlogPost = await dbContext.BlogPosts
-                    .Include(x => x.Categories)
-                    .FirstOrDefaultAsync(x => x.Id == id);
+                var existingBlogPost = await blogPostRepository.GetByIdWithCategoriesAsync(id);
                 _ = existingBlogPost ?? throw new NotFoundException("Blog post not found.");
 
                 mapper.Map(request, existingBlogPost);
@@ -170,15 +163,13 @@ namespace BlogApp.API.Services
 
                 foreach (var categoryGuid in request.Categories)
                 {
-                    var existingCategory = await dbContext.Categories.FirstOrDefaultAsync(
-                        c => c.Id == categoryGuid
-                    );
+                    var existingCategory = await categoryRepository.GetByIdAsync(categoryGuid);
                     if (existingCategory != null)
                     {
                         existingBlogPost.Categories.Add(existingCategory);
                     }
                 }
-                await dbContext.SaveChangesAsync();
+                await blogPostRepository.UpdateAsync(existingBlogPost);
 
                 return mapper.Map<BlogPostDto>(existingBlogPost);
             }
@@ -192,13 +183,10 @@ namespace BlogApp.API.Services
         {
             try
             {
-                var existingBlogPost = await dbContext.BlogPosts.SingleOrDefaultAsync(
-                    x => x.Id == id
-                );
+                var existingBlogPost = await blogPostRepository.GetByIdAsync(id);
                 _ = existingBlogPost ?? throw new NotFoundException("Blog post not found.");
 
-                dbContext.BlogPosts.Remove(existingBlogPost);
-                await dbContext.SaveChangesAsync();
+                await blogPostRepository.DeleteAsync(existingBlogPost);
                 return true;
             }
             catch (Exception e)

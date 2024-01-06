@@ -1,35 +1,35 @@
 ﻿using AutoMapper;
-using BlogApp.API.Data;
 using BlogApp.API.Exceptions;
 using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+using BlogApp.API.Repositories.Interfaces;
+using BlogApp.API.Services.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlogApp.API.Services
 {
-    public class ImageService : IImageRepository
+    public class ImageService : IImageService
     {
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IImageRepository imageRepository;
         private readonly IMapper mapper;
-        private readonly ApplicationDbContext dbContext;
         private readonly IValidator<ImageUploadRequestDto> imageUploadValidator;
 
         public ImageService(
             IWebHostEnvironment webHostEnvironment,
             IHttpContextAccessor httpContextAccessor,
+            IImageRepository imageRepository,
             IMapper mapper,
-            ApplicationDbContext dbContext,
             IValidator<ImageUploadRequestDto> ImageUploadValidator
         )
         {
             this.webHostEnvironment = webHostEnvironment;
             this.httpContextAccessor = httpContextAccessor;
+            this.imageRepository = imageRepository;
             this.mapper = mapper;
-            this.dbContext = dbContext;
             imageUploadValidator = ImageUploadValidator;
         }
 
@@ -43,7 +43,7 @@ namespace BlogApp.API.Services
             try
             {
                 pageSize = Math.Min(pageSize, 10);
-                var query = dbContext.BlogImages.AsNoTracking();
+                var query = await imageRepository.GetAllAsync();
                 var totalItems = await query.CountAsync();
                 var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
@@ -117,15 +117,14 @@ namespace BlogApp.API.Services
 
             blogImage.Url = urlPath;
 
-            await dbContext.BlogImages.AddAsync(blogImage);
-            await dbContext.SaveChangesAsync();
+            await imageRepository.AddAsync(blogImage);
 
             return mapper.Map<BlogImageDto>(blogImage);
         }
 
         public async Task<BlogImage> DeleteAsync(Guid id)
         {
-            var existingImage = await dbContext.BlogImages.FirstOrDefaultAsync(c => c.Id == id);
+            var existingImage = await imageRepository.GetByIdAsync(id);
             _ = existingImage ?? throw new NotFoundException("Image not found.");
 
             // Retrieve the file path from the entity
@@ -137,8 +136,7 @@ namespace BlogApp.API.Services
 
             try
             {
-                dbContext.BlogImages.Remove(existingImage);
-                await dbContext.SaveChangesAsync();
+                await imageRepository.DeleteAsync(existingImage);
                 File.Delete(imagePath);
             }
             catch (Exception e)

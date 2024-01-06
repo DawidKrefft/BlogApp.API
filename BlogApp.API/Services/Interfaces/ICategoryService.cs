@@ -1,9 +1,9 @@
 ﻿using BlogApp.API.Models.Domain;
 using BlogApp.API.Models.DTO;
 
-namespace BlogApp.API.Repositories
+namespace BlogApp.API.Services.Interfaces
 {
-    public interface ICategoryRepository
+    public interface ICategoryService
     {
         Task<PaginatedResult<CategoryDto>> GetAllAsync(int page, int pageSize);
         Task<CategoryDto> GetByIdAsync(Guid id);

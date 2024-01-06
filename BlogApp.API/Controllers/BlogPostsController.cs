@@ -1,6 +1,5 @@
-﻿using BlogApp.API.Models.Domain;
-using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+﻿using BlogApp.API.Models.DTO;
+using BlogApp.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,11 +9,11 @@ namespace BlogApp.API.Controllers
     [ApiController]
     public class BlogPostsController : ControllerBase
     {
-        private readonly IBlogPostRepository blogPostRepository;
+        private readonly IBlogPostService blogPostService;
 
-        public BlogPostsController(IBlogPostRepository blogPostRepository)
+        public BlogPostsController(IBlogPostService blogPostService)
         {
-            this.blogPostRepository = blogPostRepository;
+            this.blogPostService = blogPostService;
         }
 
         /// <summary>
@@ -29,7 +28,7 @@ namespace BlogApp.API.Controllers
             [FromQuery] int pageSize = 5
         )
         {
-            var paginatedResult = await blogPostRepository.GetAllAsync(page, pageSize);
+            var paginatedResult = await blogPostService.GetAllAsync(page, pageSize);
             return Ok(paginatedResult);
         }
 
@@ -41,7 +40,7 @@ namespace BlogApp.API.Controllers
         [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetBlogPostById([FromRoute] Guid id)
         {
-            var blogPost = await blogPostRepository.GetByIdAsync(id);
+            var blogPost = await blogPostService.GetByIdAsync(id);
             return blogPost != null ? Ok(blogPost) : NotFound();
         }
 
@@ -53,7 +52,7 @@ namespace BlogApp.API.Controllers
         [HttpGet("{urlHandle}")]
         public async Task<IActionResult> GetBlogPostByUrlHandle([FromRoute] string urlHandle)
         {
-            var blogPost = await blogPostRepository.GetByUrlHandleAsync(urlHandle);
+            var blogPost = await blogPostService.GetByUrlHandleAsync(urlHandle);
             return blogPost != null ? Ok(blogPost) : NotFound();
         }
 
@@ -66,7 +65,7 @@ namespace BlogApp.API.Controllers
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> CreateBlogPost([FromBody] CreateBlogPostRequestDto request)
         {
-            var blogPost = await blogPostRepository.CreateAsync(request);
+            var blogPost = await blogPostService.CreateAsync(request);
             return CreatedAtAction(nameof(GetBlogPostById), new { id = blogPost.Id }, blogPost);
         }
 
@@ -83,7 +82,7 @@ namespace BlogApp.API.Controllers
             [FromBody] UpdateBlogPostRequestDto request
         )
         {
-            var updatedBlogPost = await blogPostRepository.UpdateAsync(id, request);
+            var updatedBlogPost = await blogPostService.UpdateAsync(id, request);
             return updatedBlogPost != null ? Ok(updatedBlogPost) : NotFound();
         }
 
@@ -96,7 +95,7 @@ namespace BlogApp.API.Controllers
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> DeleteBlogPost([FromRoute] Guid id)
         {
-            var result = await blogPostRepository.DeleteAsync(id);
+            var result = await blogPostService.DeleteAsync(id);
             return result ? NoContent() : NotFound();
         }
     }

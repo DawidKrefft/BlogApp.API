@@ -1,5 +1,5 @@
 ﻿using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+using BlogApp.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,11 +9,11 @@ namespace BlogApp.API.Controllers
     [ApiController]
     public class CategoriesController : ControllerBase
     {
-        private readonly ICategoryRepository categoryRepository;
+        private readonly ICategoryService categoryService;
 
-        public CategoriesController(ICategoryRepository categoryRepository)
+        public CategoriesController(ICategoryService categoryService)
         {
-            this.categoryRepository = categoryRepository;
+            this.categoryService = categoryService;
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace BlogApp.API.Controllers
             [FromQuery] int pageSize = 5
         )
         {
-            var paginatedResult = await categoryRepository.GetAllAsync(page, pageSize);
+            var paginatedResult = await categoryService.GetAllAsync(page, pageSize);
             return Ok(paginatedResult);
         }
 
@@ -40,7 +40,7 @@ namespace BlogApp.API.Controllers
         [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetCategoryById([FromRoute] Guid id)
         {
-            var existingCategory = await categoryRepository.GetByIdAsync(id);
+            var existingCategory = await categoryService.GetByIdAsync(id);
             return existingCategory != null ? Ok(existingCategory) : NotFound();
         }
 
@@ -53,7 +53,7 @@ namespace BlogApp.API.Controllers
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequestDto request)
         {
-            var category = await categoryRepository.CreateAsync(request);
+            var category = await categoryService.CreateAsync(request);
             return CreatedAtAction(nameof(GetCategoryById), new { id = category.Id }, category);
         }
 
@@ -70,7 +70,7 @@ namespace BlogApp.API.Controllers
             UpdateCategoryRequestDto request
         )
         {
-            var updatedCategory = await categoryRepository.UpdateAsync(id, request);
+            var updatedCategory = await categoryService.UpdateAsync(id, request);
             return updatedCategory != null ? Ok(updatedCategory) : NotFound();
         }
 
@@ -83,7 +83,7 @@ namespace BlogApp.API.Controllers
         [Authorize(Roles = "Writer")]
         public async Task<IActionResult> DeleteCategory([FromRoute] Guid id)
         {
-            var result = await categoryRepository.DeleteAsync(id);
+            var result = await categoryService.DeleteAsync(id);
             return result ? NoContent() : NotFound();
         }
     }

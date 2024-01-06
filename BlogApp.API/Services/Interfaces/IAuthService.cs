@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlogApp.API.Repositories
+namespace BlogApp.API.Services.Interfaces
 {
-    public interface IAuthRepository
+    public interface IAuthService
     {
         string CreateJwtToken(IdentityUser user, List<string> roles);
         Task<LoginResponseDto> Login(LoginRequestDto request);

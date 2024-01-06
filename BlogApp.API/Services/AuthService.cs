@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
+using BlogApp.API.Exceptions;
 using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+using BlogApp.API.Repositories.Interfaces;
+using BlogApp.API.Services.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -10,36 +12,39 @@ using System.Text;
 
 namespace BlogApp.API.Services
 {
-    public class AuthService : IAuthRepository
+    public class AuthService : IAuthService
     {
         private readonly IConfiguration configuration;
-        private readonly UserManager<IdentityUser> userManager;
+        private readonly IAuthRepository authRepository;
         private readonly IMapper mapper;
         private readonly IValidator<RegisterRequestDto> registerValidator;
 
         public AuthService(
             IConfiguration configuration,
-            UserManager<IdentityUser> userManager,
+            IAuthRepository authRepository,
             IMapper mapper,
             IValidator<RegisterRequestDto> registerValidator
         )
         {
             this.configuration = configuration;
-            this.userManager = userManager;
+            this.authRepository = authRepository;
             this.mapper = mapper;
             this.registerValidator = registerValidator;
         }
 
         public async Task<LoginResponseDto> Login(LoginRequestDto request)
         {
-            var identityUser = await userManager.FindByEmailAsync(request.Email);
+            var identityUser = await authRepository.FindByEmailAsync(request.Email);
 
-            if (identityUser == null || !await IsPasswordValid(identityUser, request.Password))
+            if (
+                identityUser == null
+                || !await authRepository.IsPasswordValid(identityUser, request.Password)
+            )
             {
                 throw new InvalidOperationException("Failed to login.");
             }
 
-            var roles = await userManager.GetRolesAsync(identityUser);
+            var roles = await authRepository.GetRolesAsync(identityUser);
             var jwtToken = CreateJwtToken(identityUser, roles.ToList());
 
             var response = mapper.Map<LoginResponseDto>(identityUser);
@@ -61,7 +66,7 @@ namespace BlogApp.API.Services
                 throw new ValidationException(validationErrors);
             }
 
-            if (await IsEmailInUse(request.Email))
+            if (await authRepository.IsEmailInUse(request.Email))
             {
                 throw new ValidationException("Email is already in use.");
             }
@@ -69,7 +74,7 @@ namespace BlogApp.API.Services
             var user = mapper.Map<IdentityUser>(request);
             user.UserName = user.Email?.Trim(); // Set UserName from Email
 
-            var identityResult = await userManager.CreateAsync(user, request.Password);
+            var identityResult = await authRepository.CreateUserAsync(user, request.Password);
 
             if (!identityResult.Succeeded)
             {
@@ -77,7 +82,7 @@ namespace BlogApp.API.Services
                 return null;
             }
 
-            if (!await AddUserRole(user, "Reader"))
+            if (!await authRepository.AddToRoleAsync(user, "Reader"))
             {
                 return null;
             }
@@ -88,32 +93,21 @@ namespace BlogApp.API.Services
         public async Task<bool> DeleteAccountAsync(Guid userId)
         {
             var adminUserId = configuration["UserIds:Admin"];
-            var user = await userManager.FindByIdAsync(userId.ToString());
+            var user = await authRepository.FindByIdAsync(userId);
 
-            if (user == null)
-            {
-                return false;
-            }
-
-            if (user.Id == adminUserId)
-            {
-                throw new InvalidOperationException("Cannot delete the admin user.");
-            }
-
-            var result = await userManager.DeleteAsync(user);
-            return result.Succeeded;
+            return user == null
+                ? false
+                : user.Id == adminUserId
+                    ? throw new BadRequestException("Cannot delete the admin user.")
+                    : await authRepository.DeleteUserAsync(user);
         }
 
         public string CreateJwtToken(IdentityUser user, List<string> roles)
         {
-            // Create Claims
             var claims = new List<Claim> { new Claim(ClaimTypes.Email, user.Email) };
-
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            // JWT Security Token Parameters
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]));
-
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -125,13 +119,7 @@ namespace BlogApp.API.Services
                 ),
                 signingCredentials: credentials
             );
-
             return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        private async Task<bool> IsPasswordValid(IdentityUser user, string password)
-        {
-            return await userManager.CheckPasswordAsync(user, password);
         }
 
         private IEnumerable<string> HandleIdentityErrors(IdentityResult result)
@@ -142,25 +130,7 @@ namespace BlogApp.API.Services
             {
                 errors.Add(error.Description);
             }
-
             return errors;
-        }
-
-        private async Task<bool> AddUserRole(IdentityUser user, string roleName)
-        {
-            var identityResult = await userManager.AddToRoleAsync(user, roleName);
-            if (!identityResult.Succeeded)
-            {
-                HandleIdentityErrors(identityResult);
-                return false;
-            }
-            return true;
-        }
-
-        private async Task<bool> IsEmailInUse(string email)
-        {
-            var user = await userManager.FindByEmailAsync(email);
-            return user != null;
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using BlogApp.API.Models.DTO;
-using BlogApp.API.Repositories;
+using BlogApp.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,11 +9,11 @@ namespace BlogApp.API.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthRepository authRepository;
+        private readonly IAuthService authService;
 
-        public AuthController(IAuthRepository authRepository)
+        public AuthController(IAuthService authService)
         {
-            this.authRepository = authRepository;
+            this.authService = authService;
         }
 
         /// <summary>
@@ -24,7 +24,7 @@ namespace BlogApp.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
-            var loginResponse = await authRepository.Login(request);
+            var loginResponse = await authService.Login(request);
             return Ok(loginResponse);
         }
 
@@ -36,7 +36,7 @@ namespace BlogApp.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
-            await authRepository.RegisterAsync(request);
+            await authService.RegisterAsync(request);
             return Ok(new { message = "Account created successfully." });
         }
 
@@ -49,7 +49,7 @@ namespace BlogApp.API.Controllers
         [HttpDelete("{id:Guid}")]
         public async Task<IActionResult> DeleteAccount([FromRoute] Guid id)
         {
-            var result = await authRepository.DeleteAccountAsync(id);
+            var result = await authService.DeleteAccountAsync(id);
             return result ? NoContent() : NotFound();
         }
     }

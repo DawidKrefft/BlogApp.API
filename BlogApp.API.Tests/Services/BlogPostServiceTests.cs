@@ -2,6 +2,8 @@
 using BlogApp.API.Data;
 using BlogApp.API.Exceptions;
 using BlogApp.API.Models.DTO;
+using BlogApp.API.Repositories;
+using BlogApp.API.Repositories.Interfaces;
 using BlogApp.API.Services;
 using BlogApp.API.Tests.InMemDatabases;
 using BlogApp.API.Validations;
@@ -14,6 +16,8 @@ namespace BlogApp.API.Tests.Services
     public class BlogPostServiceTests
     {
         private readonly ApplicationDbContext dbContext;
+        private readonly IBlogPostRepository blogPostRepository;
+        private readonly ICategoryRepository categoryRepository;
         private readonly IMapper mapper;
         private readonly IValidator<CreateBlogPostRequestDto> createBlogPostValidator;
         private readonly IValidator<UpdateBlogPostRequestDto> updateBlogPostValidator;
@@ -23,11 +27,14 @@ namespace BlogApp.API.Tests.Services
         {
             var inMemoryContext = new InMemApplicationDbContext();
             dbContext = inMemoryContext.GetDatabaseContext().Result;
+            blogPostRepository = new BlogPostRepository(dbContext);
+            categoryRepository = new CategoryRepository(dbContext);
             mapper = CreateMapper();
             createBlogPostValidator = new CreateBlogPostValidator();
             updateBlogPostValidator = new UpdateBlogPostValidator();
             blogPostService = new BlogPostService(
-                dbContext,
+                blogPostRepository,
+                categoryRepository,
                 mapper,
                 createBlogPostValidator,
                 updateBlogPostValidator
